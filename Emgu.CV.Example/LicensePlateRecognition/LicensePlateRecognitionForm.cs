@@ -17,6 +17,10 @@ using Emgu.CV.UI;
 using System.Diagnostics;
 using Emgu.CV.Util;
 using System.Text.RegularExpressions;
+using System.IO;
+using LicensePlateRecognition.Utils;
+using System.Linq;
+using LicensePlateRecognition.OCR_Method;
 
 namespace LicensePlateRecognition
 {
@@ -35,7 +39,15 @@ namespace LicensePlateRecognition
             //ProcessImage(m);
         }
 
-        private bool ProcessImage(IInputOutputArray image, int ocr_mode, int count)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="image"></param>
+        /// <param name="ocr_mode"></param>
+        /// <param name="count"></param>
+        /// <param name="canny_thres">Canny threshold will take 3 values 20, 30, 40, 50</param>
+        /// <returns></returns>
+        private bool ProcessImage(IInputOutputArray image, int ocr_mode)
         {
             Stopwatch watch = Stopwatch.StartNew(); // time the detection process
             List<IInputOutputArray> licensePlateImagesList = new List<IInputOutputArray>();
@@ -44,28 +56,60 @@ namespace LicensePlateRecognition
             List<string> words = new List<string>();
             var result = false;
             bool validValue = false;
+            UMat filteredPlate = new UMat();
+            StringBuilder strBuilder = new StringBuilder();
+            CvInvoke.CvtColor(img, filteredPlate, ColorConversion.Bgr2Gray);
 
             words = _licensePlateDetector.DetectLicensePlate(
-               image,
-               licensePlateImagesList,
-               filteredLicensePlateImagesList,
-               licenseBoxList,
-               ocr_mode);
+                        image,
+                        licensePlateImagesList,
+                        filteredLicensePlateImagesList,
+                        licenseBoxList,
+                        ocr_mode);
 
-            words.ForEach(w =>
+            if (ocr_mode == 3)
             {
-                string replacement = Regex.Replace(w, @"\t|\n|\r", "");
+                strBuilder = ComputerVisionOCR.GetText(filteredPlate);
+                if (strBuilder != null)
+                {
+                    words.Clear();
+                    List<String> licenses = new List<String>
+                        {
+                            strBuilder.ToString()
+                        };
+                    licenses.ForEach(
+                        x =>
+                        {
+                            words.Add(x);
+                        });
+                }
+            }       
+
+            var validWords = new List<string>();
+            var validLicencePlates = new List<IInputOutputArray>();
+            for (int w = 0; w < words.Count; w++)
+            {
+                string replacement2 = Regex.Replace(words[w], @"\t|\n|\r", "");
+                string replacement = Regex.Replace(replacement2, "[^0-9a-zA-Z]+", "");
                 if (replacement.Length >= 6 && replacement.Length <= 8 && replacement != null && FilterLicenceSpain(replacement))
                 {
                     validValue = true;
+                    validWords.Add(replacement);
+                    validLicencePlates.Add(licensePlateImagesList[w]);
                 }
-            });
-
-            if (validValue || count == 5)
-            {
-                ShowResults(image, watch, licensePlateImagesList, filteredLicensePlateImagesList, licenseBoxList, words, count);
-                result = true;
             }
+
+            if (validValue)
+            {
+                ShowResults(image, watch, validLicencePlates, filteredLicensePlateImagesList, licenseBoxList, validWords);
+            }
+            else
+            {
+                ShowResults(image, watch, licensePlateImagesList, filteredLicensePlateImagesList, licenseBoxList, words);
+            }
+
+
+            result = true;
             return result;
         }
 
@@ -101,26 +145,38 @@ namespace LicensePlateRecognition
             return result;
         }
 
-        private void ShowResults(IInputOutputArray image, Stopwatch watch, List<IInputOutputArray> licensePlateImagesList, List<IInputOutputArray> filteredLicensePlateImagesList, List<RotatedRect> licenseBoxList, List<string> words, int count)
+        private void ShowResults(IInputOutputArray image, Stopwatch watch, List<IInputOutputArray> licensePlateImagesList, List<IInputOutputArray> filteredLicensePlateImagesList, List<RotatedRect> licenseBoxList, List<string> words)
         {
+            var logger = NLog.LogManager.GetCurrentClassLogger();
+            var refinnedWords = new List<string>();
             watch.Stop(); //stop the timer
-            processTimeLabel.Text = String.Format("License Plate Recognition time: {0} milli-seconds \nIteration number = {1}", watch.Elapsed.TotalMilliseconds, count);
+            processTimeLabel.Text = String.Format("License Plate Recognition time: {0} milli-seconds", watch.Elapsed.TotalMilliseconds);
 
             panel1.Controls.Clear();
             Point startPoint = new Point(10, 10);
-            for (int i = 0; i < words.Count; i++)
+            logger.Trace("License Plate Recognition time: {0} milli-seconds", watch.Elapsed.TotalMilliseconds);
+            logger.Trace("Licence plate: {0} \nLicence detected: \n", nameB.Text);
+            for (int i = 0; i < licensePlateImagesList.Count; i++)
             {
-                Mat dest = new Mat();
-                CvInvoke.VConcat(licensePlateImagesList[i], filteredLicensePlateImagesList[i], dest);
-                AddLabelAndImage(
-                   ref startPoint,
-                   String.Format("License: {0}", words[i]),
-                   dest);
-                PointF[] verticesF = licenseBoxList[i].GetVertices();
-                Point[] vertices = Array.ConvertAll(verticesF, Point.Round);
-                using (VectorOfPoint pts = new VectorOfPoint(vertices))
-                    CvInvoke.Polylines(image, pts, true, new Bgr(Color.Red).MCvScalar, 2);
+                if (licensePlateImagesList.Count > 0)
+                {
+                    Mat dest = new Mat();
+                    CvInvoke.VConcat(licensePlateImagesList[i], filteredLicensePlateImagesList[i], dest);
+                    string replacement2 = Regex.Replace(words[i], @"\t|\n|\r", "");
+                    string replacement = Regex.Replace(replacement2, "[^0-9a-zA-Z]+", "");
+                    AddLabelAndImage(
+                       ref startPoint,
+                       String.Format("License: {0}", replacement),
+                       dest);
+                    PointF[] verticesF = licenseBoxList[i].GetVertices();
+                    Point[] vertices = Array.ConvertAll(verticesF, Point.Round);
+                    using (VectorOfPoint pts = new VectorOfPoint(vertices))
+                        CvInvoke.Polylines(image, pts, true, new Bgr(Color.Red).MCvScalar, 2);
+                    logger.Trace("{0}- {1} \n", i, replacement);
+                    refinnedWords.Add(replacement);
+                }
             }
+            LicenceQuality(nameB.Text, refinnedWords);
         }
 
         private void AddLabelAndImage(ref Point startPoint, String labelText, IImage image)
@@ -143,6 +199,11 @@ namespace LicensePlateRecognition
 
         private void button1_Click(object sender, EventArgs e)
         {
+            ///Clear multiple image 
+            inputTextBox.Text = "";
+            MyGlobal.imageClassList.Clear();
+            MyGlobal.imageList.Clear();
+
             DialogResult result = openFileDialog1.ShowDialog();
             if (result == DialogResult.OK)
             {
@@ -169,37 +230,401 @@ namespace LicensePlateRecognition
 
         private void TesseractBtn_Click_1(object sender, EventArgs e)
         {
+            TesseractSimple();
+
+        }
+
+        private void TesseractSimple()
+        {
+            CheckInputType();
             UMat uImg = img.GetUMat(AccessType.ReadWrite);
             ProcessImageMethod(uImg, 1);
+            ResetImage();
+        }
+
+        private void CheckInputType()
+        {
+            if (textBox1.Text.Length == 0)
+            {
+                int.TryParse(indiceB.Text, out int value);
+                var root = SetImageDescription(value);
+                CheckLicenceDataBase(value);
+                img = CvInvoke.Imread(root);
+            }
         }
 
         private void ProcessImageMethod(UMat uImg, int ocr_Method)
         {
-            for (int count = 1; count <= 5; count++)
-            {
-                if (ProcessImage(uImg, ocr_Method, count))
-                {
-                    break;
-                }
-            }
+            ProcessImage(uImg, ocr_Method);
         }
 
         private void GoogleBtn_Click(object sender, EventArgs e)
         {
+            GoogleApiSimple();
+        }
+
+        private void GoogleApiSimple()
+        {
+            CheckInputType();
             UMat uImg = img.GetUMat(AccessType.ReadWrite);
             ProcessImageMethod(uImg, 2);
+            ResetImage();
         }
 
         private void Button2_Click(object sender, EventArgs e)
         {
-            img = CvInvoke.Imread(openFileDialog1.FileName);
+            ResetImage();
+        }
+
+        private void ResetImage()
+        {
             imageBox1.Image = img;
         }
 
         private void CVisionButton_Click(object sender, EventArgs e)
         {
+            CompVisionSimple();
+        }
+
+        private void CompVisionSimple()
+        {
+            CheckInputType();
             UMat uImg = img.GetUMat(AccessType.ReadWrite);
             ProcessImageMethod(uImg, 3);
+            ResetImage();
+        }
+
+        private void Delete_Click(object sender, EventArgs e)
+        {
+            var value = default(int);
+            int.TryParse(indiceB.Text, out value);
+            var x = SetImageDescription(value);
+
+            NextImage();
+
+            DeleteLicenceDataBase(value);
+            File.Delete(x);
+        }
+
+        private void button4_Click(object sender, EventArgs e)
+        {
+            //remove one image texbox text
+            textBox1.Text = "";
+            inputTextBox.Text = "";
+            using (var fbd = new FolderBrowserDialog())
+            {
+                DialogResult result = fbd.ShowDialog();
+
+                if (result == DialogResult.OK && !string.IsNullOrWhiteSpace(fbd.SelectedPath))
+                {
+                    inputB.Text = fbd.SelectedPath;
+                    string[] files = Directory.GetFiles(inputB.Text);
+                    var count = 0;
+                    foreach (var file in files)
+                    {
+                        var split = inputB.Text.Split(new string[] { "\\" }, StringSplitOptions.None);
+                        var ini = split[split.Length - 1];
+                        var fileText = file.Substring(file.IndexOf(ini) + ini.Length + 1, file.Length - file.IndexOf(ini) - ini.Length - 1);
+                        inputTextBox.Text += fileText + "\r\n";
+
+                        ImageStructure imageStructure = GetImageStructure(count, fileText);
+                        MyGlobal.imageClassList.Add(imageStructure);
+                        count++;
+                    }
+
+                    if (MyGlobal.imageClassList.Count != 0)
+                    {
+                        SetImageDescription(0);
+                        CheckLicenceDataBase(0);
+                    }
+                }
+            }
+        }
+
+        public static class MyGlobal
+        {
+            public static List<string> imageList = new List<string>();
+
+            public static List<ImageStructure> imageClassList = new List<ImageStructure>();
+
+            public static List<string> CorrectDetection = new List<string>();
+        }
+
+        private static ImageStructure GetImageStructure(int count, string fileText)
+        {
+            return new ImageStructure
+            {
+                Id = count,
+                ImageName = fileText
+            };
+        }
+        private string SetImageDescription(int indexImage)
+        {
+            var first = MyGlobal.imageClassList[indexImage];
+            var index = first.ImageName.IndexOf(".");
+            var name = first.ImageName.Substring(0, index);
+            var extension = first.ImageName.Substring(index + 1, first.ImageName.Length - index - 1);
+            nameB.Text = "";
+            indiceB.Text = first.Id.ToString();
+            var result = inputB.Text + "\\" + first.ImageName;
+            imageBox1.Load(result);
+            imageBox1.SizeMode = PictureBoxSizeMode.StretchImage;
+
+            return result;
+        }
+
+        public void CheckLicenceDataBase(int index)
+        {
+            var first = MyGlobal.imageClassList[index];
+            try
+            {
+                using (var context = new ImageDataBaseEntities())
+                {
+                    IQueryable<ImagesLicence> imageSelected = GetImageDetails(first, context);
+                    if (imageSelected.Any())
+                    {
+                        nameB.Text = imageSelected.FirstOrDefault().carLicence;
+                    }
+                }
+            }
+            catch (Exception es)
+
+            {
+                MessageBox.Show(es.Message);
+            }
+        }
+
+        public void DeleteLicenceDataBase(int index)
+        {
+            var first = MyGlobal.imageClassList[index];
+            try
+            {
+                using (var context = new ImageDataBaseEntities())
+                {
+                    IQueryable<ImagesLicence> imageSelected = GetImageDetails(first, context);
+                    if (imageSelected.Any())
+                    {
+                        imageSelected.FirstOrDefault().active = false;
+                        context.ImagesLicences.Remove(imageSelected.FirstOrDefault());
+                        context.SaveChanges();
+                    }
+                }
+            }
+            catch (Exception es)
+
+            {
+                MessageBox.Show(es.Message);
+            }
+        }
+
+        private static IQueryable<ImagesLicence> GetImageDetails(ImageStructure first, ImageDataBaseEntities context)
+        {
+            return from img in context.ImagesLicences
+                   where img.name == first.ImageName
+                   select img;
+        }
+
+        private static IQueryable<ImagesLicence> GetImageDetails(string name, ImageDataBaseEntities context)
+        {
+            return from img in context.ImagesLicences
+                   where img.name == name
+                   select img;
+        }
+
+        private void beforeB_Click(object sender, EventArgs e)
+        {
+            if (indiceB.Text.Length > 0 && indiceB.Text != String.Empty && indiceB.Text != "0")
+            {
+                try
+                {
+                    var value = default(int);
+                    int.TryParse(indiceB.Text, out value);
+                    if (value != 0)
+                    {
+                        value--;
+                        SetImageDescription(value);
+                        var root = SetImageDescription(value);
+                        img = CvInvoke.Imread(root);
+                        CheckLicenceDataBase(value);
+                    }
+                }
+                catch (Exception)
+                { }
+            }
+        }
+
+        private void nextB_Click(object sender, EventArgs e)
+        {
+            NextImage();
+        }
+
+        private void NextImage()
+        {
+            if (indiceB.Text.Length > 0 && indiceB.Text != String.Empty)
+            {
+                try
+                {
+                    var value = default(int);
+                    int.TryParse(indiceB.Text, out value);
+
+                    value++;
+                    var root = SetImageDescription(value);
+                    img = CvInvoke.Imread(root);
+                    CheckLicenceDataBase(value);
+                }
+                catch (Exception)
+                { }
+            }
+        }
+
+        private void SaveDbButton_Click(object sender, EventArgs e)
+        {
+            var logger = NLog.LogManager.GetCurrentClassLogger();
+            try
+            {
+                //String str = "Data Source=ESBA9336;Initial Catalog=ImageDataBase;Persist Security Info=True;User ID=sa;Password=Sunshine123";
+
+                //SqlConnection con = new SqlConnection(str);
+
+                var imageDto = new ImagesLicence
+                {
+                    dateAdded = DateTime.Now,
+                    active = true,
+                    carLicence = nameB.Text,
+                    localRoute = inputB.Text,
+                    name = MyGlobal.imageClassList[int.Parse(indiceB.Text)].ImageName
+                };
+
+
+
+                using (var context = new ImageDataBaseEntities())
+                {
+                    IQueryable<ImagesLicence> imageSelected = GetImageDetails(imageDto.name, context);
+                    if (imageSelected.Any())
+                    {
+                        imageSelected.FirstOrDefault().carLicence = nameB.Text;
+                    }
+                    else
+                    {
+                        context.ImagesLicences.Add(imageDto);
+                    }
+
+                    context.SaveChanges();
+                    logger.Trace("New car licence saved name: {0}, car licence: {1}", imageDto.name, imageDto.carLicence);
+                }
+
+            }
+            catch (Exception es)
+
+            {
+                MessageBox.Show(es.Message);
+            }
+        }
+
+        private void indiceB_KeyUp(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                if (indiceB.Text.Length > 0 && indiceB.Text != String.Empty)
+                {
+                    try
+                    {
+                        var value = default(int);
+                        int.TryParse(indiceB.Text, out value);
+                        if (value != 0)
+                        {
+                            var root = SetImageDescription(value);
+                            img = CvInvoke.Imread(root);
+                            CheckLicenceDataBase(value);
+                        }
+                    }
+                    catch (Exception)
+                    { }
+                }
+            }
+        }
+
+        private void LicenceQuality(string correctLicence, List<string> detectedLicence)
+        {
+            var logger = NLog.LogManager.GetCurrentClassLogger();
+            bool valid = false;
+            var count = 0;
+            detectedLicence.ForEach(licence =>
+            {
+                if (string.Compare(correctLicence.ToLower(), licence.ToLower()).Equals(0))
+                {
+                    valid = true;
+                    count++;
+                }
+            });
+            if (valid)
+            {
+                logger.Trace("Licence plate successfully detected\n");
+                MyGlobal.CorrectDetection.Add(correctLicence);
+            }
+            else
+            {
+                logger.Trace("Licence plate wrong detection \n", nameB.Text);
+            }
+            double effectivty = 0;
+            if (detectedLicence.Count > 0)
+            {
+                effectivty = (double)count / (double)detectedLicence.Count * 100;
+            }
+            logger.Trace("Licences detected: {0} Detection effectivity: {1}%\n\n\n", detectedLicence.Count, Math.Round(effectivty, 2));
+        }
+
+        private void TesseractGBtn_Click(object sender, EventArgs e)
+        {
+            var logger = NLog.LogManager.GetCurrentClassLogger();
+            Stopwatch globalWatch = Stopwatch.StartNew(); // time the detection process
+            for (int i = 0; i < MyGlobal.imageClassList.Count; i++)
+            {
+                if (MyGlobal.imageClassList[i].ImageName.IndexOf(".jpg") > 0)
+                {
+                    TesseractSimple();
+                }
+                NextImage();
+            }
+            globalWatch.Stop();
+            double percent = (double)MyGlobal.CorrectDetection.Count / (double)MyGlobal.imageClassList.Count * 100;
+            logger.Trace("License Plate Recognition time Tesseract Global: {0} milli-seconds \nFounded licence:{1}---Total licences{2}\nDetection percent: {4}%", globalWatch.Elapsed.TotalMilliseconds, MyGlobal.CorrectDetection.Count.ToString(), MyGlobal.imageClassList.Count.ToString(), percent.ToString());
+        }
+
+        private void GoogleApiGBtn_Click(object sender, EventArgs e)
+        {
+            var logger = NLog.LogManager.GetCurrentClassLogger();
+            Stopwatch globalWatch = Stopwatch.StartNew(); // time the detection process
+            for (int i = 0; i < MyGlobal.imageClassList.Count; i++)
+            {
+                if (MyGlobal.imageClassList[i].ImageName.IndexOf(".jpg") > 0)
+                {
+                    GoogleApiSimple();
+                }
+                NextImage();
+            }
+            globalWatch.Stop();
+            double percent = (double)MyGlobal.CorrectDetection.Count / (double)MyGlobal.imageClassList.Count * 100;
+            logger.Trace("License Plate Recognition time Google Api Global: {0} milli-seconds \nFounded licence:{1}---Total licences{2}\nDetection percent: {4}%", globalWatch.Elapsed.TotalMilliseconds, MyGlobal.CorrectDetection.Count.ToString(), MyGlobal.imageClassList.Count.ToString(), percent.ToString());
+
+        }
+
+        private void GoogleVisionGBtn_Click(object sender, EventArgs e)
+        {
+            var logger = NLog.LogManager.GetCurrentClassLogger();
+            Stopwatch globalWatch = Stopwatch.StartNew(); // time the detection process
+            for (int i = 0; i < MyGlobal.imageClassList.Count; i++)
+            {
+                if (MyGlobal.imageClassList[i].ImageName.IndexOf(".jpg") > 0)
+                {
+                    CompVisionSimple();
+                }
+                NextImage();
+            }
+            globalWatch.Stop();
+            double percent = (double)MyGlobal.CorrectDetection.Count / (double)MyGlobal.imageClassList.Count * 100;
+            logger.Trace("License Plate Recognition time Computer vision Api Global: {0} milli-seconds \nFounded licence:{1}---Total licences{2}\nDetection percent: {4}%", globalWatch.Elapsed.TotalMilliseconds, MyGlobal.CorrectDetection.Count.ToString(), MyGlobal.imageClassList.Count.ToString(), percent.ToString());
+
         }
     }
 }

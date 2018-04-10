@@ -146,7 +146,9 @@ namespace LicensePlateRecognition
         /// <param name="filteredLicensePlateImagesList">A list of images where the detected license plate regions (with noise removed) are stored</param>
         /// <param name="detectedLicensePlateRegionList">A list where the regions of license plate (defined by an MCvBox2D) are stored</param>
         /// <param name="ocr_mode">Bool to check the ocr mode </param>
+        /// <param name="canny_thres">Canny threshold will take 3 values 20, 30, 40, 50</param>
         /// <returns>The list of words for each license plate</returns>
+        /// <returns></returns>
         public List<String> DetectLicensePlate(
            IInputArray img,
            List<IInputOutputArray> licensePlateImagesList,
@@ -165,7 +167,29 @@ namespace LicensePlateRecognition
 
                 SaveImageClass.SaveImage(gray, "gray.jpg");
                 SaveImageClass.SaveImage(canny, "canny.jpg");
-                FindLicensePlate(contours, hierachy, 0, gray, canny, licensePlateImagesList, filteredLicensePlateImagesList, detectedLicensePlateRegionList, licenses, ocr_mode);
+                for (int i = 0; i <= 2; i++)
+                {
+                    switch (i)
+                    {
+                        case 0:
+                            {
+                                FindLicensePlate(contours, hierachy, 0, gray, canny, licensePlateImagesList, filteredLicensePlateImagesList, detectedLicensePlateRegionList, licenses, ocr_mode, 100);
+                                break;
+                            }
+                        case 1:
+                            {
+                                FindLicensePlate(contours, hierachy, 0, gray, canny, licensePlateImagesList, filteredLicensePlateImagesList, detectedLicensePlateRegionList, licenses, ocr_mode, 150);
+                                break;
+                            }
+                        case 2:
+                            {
+                                FindLicensePlate(contours, hierachy, 0, gray, canny, licensePlateImagesList, filteredLicensePlateImagesList, detectedLicensePlateRegionList, licenses, ocr_mode, 170);
+                                break;
+                            }
+                        default:
+                            break;
+                    }
+                }
             }
             return licenses;
         }
@@ -189,7 +213,7 @@ namespace LicensePlateRecognition
         private void FindLicensePlate(
            VectorOfVectorOfPoint contours, int[,] hierachy, int idx, IInputArray gray, IInputArray canny,
            List<IInputOutputArray> licensePlateImagesList, List<IInputOutputArray> filteredLicensePlateImagesList, List<RotatedRect> detectedLicensePlateRegionList,
-           List<String> licenses, int ocr_mode)
+           List<String> licenses, int ocr_mode, int threshold_parameter)
         {
             for (; idx >= 0; idx = hierachy[idx, 0])
             {
@@ -206,7 +230,7 @@ namespace LicensePlateRecognition
                             //If the contour has less than 6 children, it is not a license plate (assuming license plate has at least 3 charactor)
                             //However we should search the children of this contour to see if any of them is a license plate
                             FindLicensePlate(contours, hierachy, hierachy[idx, 2], gray, canny, licensePlateImagesList,
-                               filteredLicensePlateImagesList, detectedLicensePlateRegionList, licenses, ocr_mode);
+                               filteredLicensePlateImagesList, detectedLicensePlateRegionList, licenses, ocr_mode, threshold_parameter);
                             continue;
                         }
 
@@ -235,7 +259,7 @@ namespace LicensePlateRecognition
                             //Contour<Point> child = contours.VNext;
                             if (hierachy[idx, 2] > 0)
                                 FindLicensePlate(contours, hierachy, hierachy[idx, 2], gray, canny, licensePlateImagesList,
-                                   filteredLicensePlateImagesList, detectedLicensePlateRegionList, licenses, ocr_mode);
+                                   filteredLicensePlateImagesList, detectedLicensePlateRegionList, licenses, ocr_mode, threshold_parameter);
                             continue;
                         }
 
@@ -279,14 +303,9 @@ namespace LicensePlateRecognition
 
                             SaveImageClass.SaveImage(plate, "plate.jpg");
                             UMat filteredPlate = new UMat();
-                            if (ocr_mode == 3)
-                            {
-                                filteredPlate = plate;
-                            }
-                            else
-                            {
-                                filteredPlate = FilterPlate(plate);
-                            }
+
+                            filteredPlate = FilterPlate(plate, threshold_parameter);
+
                             SaveImageClass.SaveImage(filteredPlate, "filtered.jpg");
                             StringBuilder strBuilder = new StringBuilder();
                             switch (ocr_mode)
@@ -328,10 +347,11 @@ namespace LicensePlateRecognition
         /// </summary>
         /// <param name="plate">The license plate image</param>
         /// <returns>License plate image without the noise</returns>
-        private static UMat FilterPlate(UMat plate)
+        private static UMat FilterPlate(UMat plate, int threshold_parameter)
         {
             UMat thresh = new UMat();
-            CvInvoke.Threshold(plate, thresh, 100, 255, ThresholdType.BinaryInv);
+            //Modify line height(modifica captura de linea por color de pixel)
+            CvInvoke.Threshold(plate, thresh, threshold_parameter, 255, ThresholdType.BinaryInv);
             //Image<Gray, Byte> thresh = plate.ThresholdBinaryInv(new Gray(120), new Gray(255));
 
             SaveImageClass.SaveImage(plate, "plate.jpg");

@@ -31,6 +31,7 @@ namespace LicensePlateRecognition.OCR_Method
                 if (annotation.Description != null)
                 {
                     strBuilder.Append(annotation.Description);
+                    break;
                 }
             }
 
