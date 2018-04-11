@@ -95,10 +95,12 @@ namespace LicensePlateRecognition
                     if (!string.IsNullOrWhiteSpace(filteredLicence))
                     {
                         validValue = true;
-                        validWords.Add(filteredLicence);
-                        validLicencePlates.Add(licensePlateImagesList[w]);
+                        if (!validWords.Contains(replacement))
+                        {
+                            validWords.Add(filteredLicence);
+                            validLicencePlates.Add(licensePlateImagesList[w]);
+                        }
                     }
-
                 }
             }
 
@@ -131,18 +133,36 @@ namespace LicensePlateRecognition
                 try
                 {
                     int.Parse(character.ToString());
-                    mask.Add("1");
+                    mask.Add("0");
                 }
                 catch (Exception)
                 {
-                    mask.Add("0");
+                    mask.Add("1");
                 }
             }
 
-            if (string.Join("", mask).Substring(mask.Count - 3) == "111")
+            if (mask.Count >= 8)
             {
-                replacement = replacement.Substring(replacement.Length - 7);
+                if (string.Join("", mask).Substring(mask.Count - 6) == "100001")
+                {
+                    result = replacement.Substring(replacement.Length - 6);
+                    mask = GerenateMak(mask, 6);
+                }
+                else if (string.Join("", mask).Substring(mask.Count - 7) == "1100001"
+                        || string.Join("", mask).Substring(mask.Count - 7) == "1000011"
+                        || string.Join("", mask).Substring(mask.Count - 7) == "0000111")
+                {
+                    result = replacement.Substring(replacement.Length - 7);
+                    mask = GerenateMak(mask, 6);
+                }
+                else if (string.Join("", mask).Substring(mask.Count - 8) == "11000011"
+                      || string.Join("", mask).Substring(mask.Count - 8) == "10000011")
+                {
+                    result = replacement.Substring(replacement.Length - 8);
+                    mask = GerenateMak(mask, 8);
+                }
             }
+
 
             switch (mask.Count)
             {
@@ -181,7 +201,7 @@ namespace LicensePlateRecognition
                         }
                         break;
                     }
-                case 8  :
+                case 8:
                     {
                         if (string.Join("", mask) == "11000011")
                         {
@@ -190,13 +210,32 @@ namespace LicensePlateRecognition
                                 result = replacement;
                             }
                         }
+                        else if (string.Join("", mask) == "10000011")
+                        {
+                            if (CheckProvinceEnum(replacement.Substring(0, 1)))
+                            {
+                                result = replacement;
+                            }
+                        }
                         break;
                     }
                 default:
                     break;
+
             }
 
+
             return result;
+        }
+
+        private static List<string> GerenateMak(List<string> mask, int limit)
+        {
+            var maskTemp = new List<String>();
+            for (int i = mask.Count - limit; i < mask.Count; i++)
+            {
+                maskTemp.Add(mask[i]);
+            }
+            return maskTemp;
         }
 
         private bool CheckProvinceEnum(string provinceSufix)

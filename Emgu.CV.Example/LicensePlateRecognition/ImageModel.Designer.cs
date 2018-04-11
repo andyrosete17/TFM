@@ -1,4 +1,4 @@
-﻿// T4 code generation is enabled for model 'C:\Users\rosetea.EUTIGPLC\Documents\TFM\emgucv-master\Emgu.CV.Example\LicensePlateRecognition\ImageModel.edmx'. 
+﻿// T4 code generation is enabled for model 'C:\_TFM\Emgu.CV.Example\LicensePlateRecognition\ImageModel.edmx'. 
 // To enable legacy code generation, change the value of the 'Code Generation Strategy' designer
 // property to 'Legacy ObjectContext'. This property is available in the Properties Window when the model
 // is open in the designer.
