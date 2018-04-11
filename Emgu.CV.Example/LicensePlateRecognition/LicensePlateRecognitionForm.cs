@@ -2,25 +2,23 @@
 //  Copyright (C) 2004-2018 by EMGU Corporation. All rights reserved.
 //----------------------------------------------------------------------------
 
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Text;
-using System.Windows.Forms;
 using Emgu.CV;
 using Emgu.CV.CvEnum;
 using Emgu.CV.Structure;
 using Emgu.CV.UI;
-
-using System.Diagnostics;
 using Emgu.CV.Util;
-using System.Text.RegularExpressions;
-using System.IO;
-using LicensePlateRecognition.Utils;
-using System.Linq;
+using LicensePlateRecognition.Enums;
 using LicensePlateRecognition.OCR_Method;
+using LicensePlateRecognition.Utils;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Drawing;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Windows.Forms;
 
 namespace LicensePlateRecognition
 {
@@ -83,7 +81,7 @@ namespace LicensePlateRecognition
                             words.Add(x);
                         });
                 }
-            }       
+            }
 
             var validWords = new List<string>();
             var validLicencePlates = new List<IInputOutputArray>();
@@ -91,11 +89,16 @@ namespace LicensePlateRecognition
             {
                 string replacement2 = Regex.Replace(words[w], @"\t|\n|\r", "");
                 string replacement = Regex.Replace(replacement2, "[^0-9a-zA-Z]+", "");
-                if (replacement.Length >= 6 && replacement.Length <= 8 && replacement != null && FilterLicenceSpain(replacement))
+                if (replacement.Length >= 6 && replacement != null)
                 {
-                    validValue = true;
-                    validWords.Add(replacement);
-                    validLicencePlates.Add(licensePlateImagesList[w]);
+                    var filteredLicence = FilterLicenceSpain(replacement);
+                    if (!string.IsNullOrWhiteSpace(filteredLicence))
+                    {
+                        validValue = true;
+                        validWords.Add(filteredLicence);
+                        validLicencePlates.Add(licensePlateImagesList[w]);
+                    }
+
                 }
             }
 
@@ -118,29 +121,96 @@ namespace LicensePlateRecognition
         /// </summary>
         /// <param name="replacement"></param>
         /// <returns></returns>
-        private bool FilterLicenceSpain(string replacement)
+        private string FilterLicenceSpain(string replacement)
         {
-            var result = false;
-            int countInterger = 0;
-            int countChar = 0;
+            var result = "";
+            var mask = new List<String>();
             var charList = replacement.ToCharArray();
             foreach (var character in charList)
             {
                 try
                 {
                     int.Parse(character.ToString());
-                    countInterger++;
+                    mask.Add("1");
                 }
                 catch (Exception)
                 {
-                    countChar++;
+                    mask.Add("0");
                 }
             }
 
-            if (countInterger >= 3 && countChar >= 2)
+            if (string.Join("", mask).Substring(mask.Count - 3) == "111")
             {
+                replacement = replacement.Substring(replacement.Length - 7);
+            }
+
+            switch (mask.Count)
+            {
+                case 6:
+                    {
+                        if (string.Join("", mask) == "100001")
+                        {
+                            if (CheckProvinceEnum(replacement.Substring(0, 1)))
+                            {
+                                result = replacement;
+                            }
+                        }
+                        break;
+                    }
+                case 7:
+                    {
+                        if (string.Join("", mask) == "0000111")
+                        {
+                            result = replacement;
+                        }
+
+                        if (string.Join("", mask) == "1100001")
+                        {
+                            if (CheckProvinceEnum(replacement.Substring(0, 2)))
+                            {
+                                result = replacement;
+                            }
+                        }
+
+                        if (string.Join("", mask) == "1000011")
+                        {
+                            if (CheckProvinceEnum(replacement.Substring(0, 1)))
+                            {
+                                result = replacement;
+                            }
+                        }
+                        break;
+                    }
+                case 8  :
+                    {
+                        if (string.Join("", mask) == "11000011")
+                        {
+                            if (CheckProvinceEnum(replacement.Substring(0, 2)))
+                            {
+                                result = replacement;
+                            }
+                        }
+                        break;
+                    }
+                default:
+                    break;
+            }
+
+            return result;
+        }
+
+        private bool CheckProvinceEnum(string provinceSufix)
+        {
+            var result = false;
+            try
+            {
+                //string province = Enum.GetName(typeof(ProvincesEnum), provinceSufix);
+                ProvincesEnum province = (ProvincesEnum)Enum.Parse(typeof(ProvincesEnum), provinceSufix);
+
                 result = true;
             }
+            catch (Exception)
+            { }
 
             return result;
         }
