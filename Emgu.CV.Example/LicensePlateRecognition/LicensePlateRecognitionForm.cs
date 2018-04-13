@@ -145,21 +145,26 @@ namespace LicensePlateRecognition
             {
                 if (string.Join("", mask).Substring(mask.Count - 6) == "100001")
                 {
-                    result = replacement.Substring(replacement.Length - 6);
-                    mask = GerenateMak(mask, 6);
+                    replacement = replacement.Substring(replacement.Length - 6);
+                    mask = GerenateMak(mask, 6, false);
                 }
                 else if (string.Join("", mask).Substring(mask.Count - 7) == "1100001"
                         || string.Join("", mask).Substring(mask.Count - 7) == "1000011"
                         || string.Join("", mask).Substring(mask.Count - 7) == "0000111")
                 {
-                    result = replacement.Substring(replacement.Length - 7);
-                    mask = GerenateMak(mask, 6);
+                    replacement = replacement.Substring(replacement.Length - 7);
+                    mask = GerenateMak(mask, 6, false);
                 }
                 else if (string.Join("", mask).Substring(mask.Count - 8) == "11000011"
                       || string.Join("", mask).Substring(mask.Count - 8) == "10000011")
                 {
-                    result = replacement.Substring(replacement.Length - 8);
-                    mask = GerenateMak(mask, 8);
+                    replacement = replacement.Substring(replacement.Length - 8);
+                    mask = GerenateMak(mask, 8,false);
+                }
+                else if (string.Join("", mask).IndexOf("111") > 0)
+                {
+                    replacement = replacement.Substring(0, string.Join("", mask).IndexOf("111") + 3);
+                    mask = GerenateMak(mask, 7,true);
                 }
             }
 
@@ -228,13 +233,24 @@ namespace LicensePlateRecognition
             return result;
         }
 
-        private static List<string> GerenateMak(List<string> mask, int limit)
+        private static List<string> GerenateMak(List<string> mask, int limit, bool direction)           
         {
             var maskTemp = new List<String>();
-            for (int i = mask.Count - limit; i < mask.Count; i++)
+            if (direction)
             {
-                maskTemp.Add(mask[i]);
+                for (int i = 0; i < limit; i++)
+                {
+                    maskTemp.Add(mask[i]);
+                }
             }
+            else
+            {
+                for (int i = mask.Count - limit; i < mask.Count; i++)
+                {
+                    maskTemp.Add(mask[i]);
+                }
+            }
+            
             return maskTemp;
         }
 
