@@ -141,12 +141,10 @@ namespace LicensePlateRecognition
                 }
             }
 
-            var x = string.Join("", mask);
-
             if (string.Join("", mask).IndexOf("111") > 0 && mask.Count >= 8)
             {
                 replacement = replacement.Substring(0, string.Join("", mask).IndexOf("111") + 3);
-                mask = GerenateMak(mask, 8, true);
+                mask = GerenateMask(mask, 8, true);
             }
 
             if (mask.Count >= 8)
@@ -154,50 +152,50 @@ namespace LicensePlateRecognition
                 if (string.Join("", mask).Substring(mask.Count - 6) == "100001" )
                 {
                     replacement = replacement.Substring(replacement.Length - 6);
-                    mask = GerenateMak(mask, 6, false);
+                    mask = GerenateMask(mask, 6, false);
                 }
                 else if (string.Join("", mask).IndexOf("100001") > 0)
                 {
                     replacement = replacement.Substring(string.Join("", mask).IndexOf("100001"), 6);
-                    mask = GerenateMak(mask, 6, false, "100001");
+                    mask = GerenateMask(mask, 6, false, "100001");
                 }
                 else if (string.Join("", mask).Substring(mask.Count - 7) == "1100001"
                         || string.Join("", mask).Substring(mask.Count - 7) == "1000011"
                         || string.Join("", mask).Substring(mask.Count - 7) == "0000111")
                 {
                     replacement = replacement.Substring(replacement.Length - 7);
-                    mask = GerenateMak(mask, 7, false);
+                    mask = GerenateMask(mask, 7, false);
                 }
                 else if (string.Join("", mask).IndexOf("1100001") > 0)
                 {
                     replacement = replacement.Substring(string.Join("", mask).IndexOf("1100001"),7);
-                    mask = GerenateMak(mask, 7, false, "1100001");
+                    mask = GerenateMask(mask, 7, false, "1100001");
                 }
                 else if (string.Join("", mask).IndexOf("1000011") > 0)
                 {
                     replacement = replacement.Substring(string.Join("", mask).IndexOf("1000011"), 7);
-                    mask = GerenateMak(mask, 7, false, "1000011");
+                    mask = GerenateMask(mask, 7, false, "1000011");
                 }
                 else if (string.Join("", mask).IndexOf("0000111") > 0)
                 {
                     replacement = replacement.Substring(string.Join("", mask).IndexOf("0000111"), 7);
-                    mask = GerenateMak(mask, 7, false, "0000111");
+                    mask = GerenateMask(mask, 7, false, "0000111");
                 }
                 else if (string.Join("", mask).Substring(mask.Count - 8) == "11000011"
                       || string.Join("", mask).Substring(mask.Count - 8) == "10000011")
                 {
                     replacement = replacement.Substring(replacement.Length - 8);
-                    mask = GerenateMak(mask, 8,false);
+                    mask = GerenateMask(mask, 8,false);
                 }
                 else if (string.Join("", mask).IndexOf("11000011") > 0)
                 {
                     replacement = replacement.Substring(string.Join("", mask).IndexOf("11000011"), 8);
-                    mask = GerenateMak(mask, 8, false, "11000011");
+                    mask = GerenateMask(mask, 8, false, "11000011");
                 }
                 else if (string.Join("", mask).IndexOf("10000011") > 0)
                 {
                     replacement = replacement.Substring(string.Join("", mask).IndexOf("10000011"), 8);
-                    mask = GerenateMak(mask, 8, false, "10000011");
+                    mask = GerenateMask(mask, 8, false, "10000011");
                 }
 
             }
@@ -267,7 +265,7 @@ namespace LicensePlateRecognition
             return result;
         }
 
-        private static List<string> GerenateMak(List<string> mask, int limit, bool direction, string maskForce = "")           
+        private static List<string> GerenateMask(List<string> mask, int limit, bool direction, string maskForce = "")           
         {
             var maskTemp = new List<String>();
             if (!string.IsNullOrWhiteSpace(maskForce))
