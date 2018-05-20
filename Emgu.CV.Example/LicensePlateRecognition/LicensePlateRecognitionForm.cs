@@ -141,12 +141,25 @@ namespace LicensePlateRecognition
                 }
             }
 
+            var x = string.Join("", mask);
+
+            if (string.Join("", mask).IndexOf("111") > 0 && mask.Count >= 8)
+            {
+                replacement = replacement.Substring(0, string.Join("", mask).IndexOf("111") + 3);
+                mask = GerenateMak(mask, 8, true);
+            }
+
             if (mask.Count >= 8)
             {
-                if (string.Join("", mask).Substring(mask.Count - 6) == "100001")
+                if (string.Join("", mask).Substring(mask.Count - 6) == "100001" )
                 {
                     replacement = replacement.Substring(replacement.Length - 6);
                     mask = GerenateMak(mask, 6, false);
+                }
+                else if (string.Join("", mask).IndexOf("100001") > 0)
+                {
+                    replacement = replacement.Substring(string.Join("", mask).IndexOf("100001"), 6);
+                    mask = GerenateMak(mask, 6, false, "100001");
                 }
                 else if (string.Join("", mask).Substring(mask.Count - 7) == "1100001"
                         || string.Join("", mask).Substring(mask.Count - 7) == "1000011"
@@ -155,17 +168,38 @@ namespace LicensePlateRecognition
                     replacement = replacement.Substring(replacement.Length - 7);
                     mask = GerenateMak(mask, 7, false);
                 }
+                else if (string.Join("", mask).IndexOf("1100001") > 0)
+                {
+                    replacement = replacement.Substring(string.Join("", mask).IndexOf("1100001"),7);
+                    mask = GerenateMak(mask, 7, false, "1100001");
+                }
+                else if (string.Join("", mask).IndexOf("1000011") > 0)
+                {
+                    replacement = replacement.Substring(string.Join("", mask).IndexOf("1000011"), 7);
+                    mask = GerenateMak(mask, 7, false, "1000011");
+                }
+                else if (string.Join("", mask).IndexOf("0000111") > 0)
+                {
+                    replacement = replacement.Substring(string.Join("", mask).IndexOf("0000111"), 7);
+                    mask = GerenateMak(mask, 7, false, "0000111");
+                }
                 else if (string.Join("", mask).Substring(mask.Count - 8) == "11000011"
                       || string.Join("", mask).Substring(mask.Count - 8) == "10000011")
                 {
                     replacement = replacement.Substring(replacement.Length - 8);
                     mask = GerenateMak(mask, 8,false);
                 }
-                else if (string.Join("", mask).IndexOf("111") > 0)
+                else if (string.Join("", mask).IndexOf("11000011") > 0)
                 {
-                    replacement = replacement.Substring(0, string.Join("", mask).IndexOf("111") + 3);
-                    mask = GerenateMak(mask, 7,true);
+                    replacement = replacement.Substring(string.Join("", mask).IndexOf("11000011"), 8);
+                    mask = GerenateMak(mask, 8, false, "11000011");
                 }
+                else if (string.Join("", mask).IndexOf("10000011") > 0)
+                {
+                    replacement = replacement.Substring(string.Join("", mask).IndexOf("10000011"), 8);
+                    mask = GerenateMak(mask, 8, false, "10000011");
+                }
+
             }
 
 
@@ -233,21 +267,32 @@ namespace LicensePlateRecognition
             return result;
         }
 
-        private static List<string> GerenateMak(List<string> mask, int limit, bool direction)           
+        private static List<string> GerenateMak(List<string> mask, int limit, bool direction, string maskForce = "")           
         {
             var maskTemp = new List<String>();
-            if (direction)
+            if (!string.IsNullOrWhiteSpace(maskForce))
             {
-                for (int i = 0; i < limit; i++)
+                var maskForceCharArray = maskForce.ToCharArray();
+                foreach (var item in maskForceCharArray)
                 {
-                    maskTemp.Add(mask[i]);
+                    maskTemp.Add(item.ToString());
                 }
             }
             else
             {
-                for (int i = mask.Count - limit; i < mask.Count; i++)
+                if (direction)
                 {
-                    maskTemp.Add(mask[i]);
+                    for (int i = 0; i < limit; i++)
+                    {
+                        maskTemp.Add(mask[i]);
+                    }
+                }
+                else
+                {
+                    for (int i = mask.Count - limit; i < mask.Count; i++)
+                    {
+                        maskTemp.Add(mask[i]);
+                    }
                 }
             }
             
@@ -444,14 +489,14 @@ namespace LicensePlateRecognition
                 if (result == DialogResult.OK && !string.IsNullOrWhiteSpace(fbd.SelectedPath))
                 {
                     inputB.Text = fbd.SelectedPath;
-                    string[] files = Directory.GetFiles(inputB.Text);
+                    var files = Directory.GetFiles(inputB.Text).OrderBy(f=>f);
                     var count = 0;
                     foreach (var file in files)
                     {
                         var split = inputB.Text.Split(new string[] { "\\" }, StringSplitOptions.None);
                         var ini = split[split.Length - 1];
                         var fileText = file.Substring(file.IndexOf(ini) + ini.Length + 1, file.Length - file.IndexOf(ini) - ini.Length - 1);
-                        inputTextBox.Text += fileText + "\r\n";
+                        inputTextBox.Text += count.ToString() + " -- " + fileText + "\r\n";
 
                         ImageStructure imageStructure = GetImageStructure(count, fileText);
                         MyGlobal.imageClassList.Add(imageStructure);
