@@ -167,23 +167,33 @@ namespace LicensePlateRecognition
 
                 SaveImageClass.SaveImage(gray, "gray.jpg");
                 SaveImageClass.SaveImage(canny, "canny.jpg");
-                for (int i = 0; i <= 2; i++)
+                for (int i = 0; i <= 4; i++)
                 {
                     switch (i)
                     {
                         case 0:
                             {
-                                FindLicensePlate(contours, hierachy, 0, gray, canny, licensePlateImagesList, filteredLicensePlateImagesList, detectedLicensePlateRegionList, licenses, ocr_mode, 100);
+                                FindLicensePlate(contours, hierachy, 0, gray, canny, licensePlateImagesList, filteredLicensePlateImagesList, detectedLicensePlateRegionList, licenses, ocr_mode, 80);
                                 break;
                             }
                         case 1:
                             {
-                                FindLicensePlate(contours, hierachy, 0, gray, canny, licensePlateImagesList, filteredLicensePlateImagesList, detectedLicensePlateRegionList, licenses, ocr_mode, 150);
+                                FindLicensePlate(contours, hierachy, 0, gray, canny, licensePlateImagesList, filteredLicensePlateImagesList, detectedLicensePlateRegionList, licenses, ocr_mode, 100);
                                 break;
                             }
                         case 2:
                             {
-                                FindLicensePlate(contours, hierachy, 0, gray, canny, licensePlateImagesList, filteredLicensePlateImagesList, detectedLicensePlateRegionList, licenses, ocr_mode, 170);
+                                FindLicensePlate(contours, hierachy, 0, gray, canny, licensePlateImagesList, filteredLicensePlateImagesList, detectedLicensePlateRegionList, licenses, ocr_mode, 120);
+                                break;
+                            }
+                        case 3:
+                            {
+                                FindLicensePlate(contours, hierachy, 0, gray, canny, licensePlateImagesList, filteredLicensePlateImagesList, detectedLicensePlateRegionList, licenses, ocr_mode, 130);
+                                break;
+                            }
+                        case 4:
+                            {
+                                FindLicensePlate(contours, hierachy, 0, gray, canny, licensePlateImagesList, filteredLicensePlateImagesList, detectedLicensePlateRegionList, licenses, ocr_mode, 140);
                                 break;
                             }
                         default:

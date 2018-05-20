@@ -153,7 +153,7 @@ namespace LicensePlateRecognition
                         || string.Join("", mask).Substring(mask.Count - 7) == "0000111")
                 {
                     replacement = replacement.Substring(replacement.Length - 7);
-                    mask = GerenateMak(mask, 6, false);
+                    mask = GerenateMak(mask, 7, false);
                 }
                 else if (string.Join("", mask).Substring(mask.Count - 8) == "11000011"
                       || string.Join("", mask).Substring(mask.Count - 8) == "10000011")
@@ -438,6 +438,7 @@ namespace LicensePlateRecognition
             inputTextBox.Text = "";
             using (var fbd = new FolderBrowserDialog())
             {
+                fbd.SelectedPath = @"C:\_MWS\TFM\Imagenes\Coches\";
                 DialogResult result = fbd.ShowDialog();
 
                 if (result == DialogResult.OK && !string.IsNullOrWhiteSpace(fbd.SelectedPath))
@@ -673,20 +674,28 @@ namespace LicensePlateRecognition
         {
             var logger = NLog.LogManager.GetCurrentClassLogger();
             bool valid = false;
-            var count = 0;
-            detectedLicence.ForEach(licence =>
-            {
-                if (string.Compare(correctLicence.ToLower(), licence.ToLower()).Equals(0))
-                {
-                    valid = true;
-                    count++;
-                }
-            });
-            if (valid)
+            var recall = 0;
+            //detectedLicence.ForEach(licence =>
+            //{
+            //    if (string.Compare(correctLicence.ToLower(), licence.ToLower()).Equals(0))
+            //    {
+            //        valid = true;
+            //        count++;
+            //    }
+            //});
+            var validCount = detectedLicence.Where(a => a.ToLower() == correctLicence.ToLower()).AsQueryable().Count();
+            if (validCount>0)
             {
                 logger.Trace("Licence plate successfully detected\n");
                 MyGlobal.CorrectDetection.Add(correctLicence);
+                recall = 100;
             }
+            //if (valid)
+            //{
+            //    logger.Trace("Licence plate successfully detected\n");
+            //    MyGlobal.CorrectDetection.Add(correctLicence);
+            //    recall = 100;
+            //}
             else
             {
                 logger.Trace("Licence plate wrong detection \n", nameB.Text);
@@ -694,43 +703,53 @@ namespace LicensePlateRecognition
             double effectivty = 0;
             if (detectedLicence.Count > 0)
             {
-                effectivty = (double)count / (double)detectedLicence.Count * 100;
-            }
-            logger.Trace("Licences detected: {0} Detection effectivity: {1}%\n\n\n", detectedLicence.Count, Math.Round(effectivty, 2));
+                effectivty = (double)validCount / (double)detectedLicence.Count * 100;
+            }            
+            logger.Trace("Licences detected: {0} Detection Precision: {1}% --- Recall = {2}%\n", detectedLicence.Count, Math.Round(effectivty, 2), recall);
         }
 
         private void TesseractGBtn_Click(object sender, EventArgs e)
         {
             var logger = NLog.LogManager.GetCurrentClassLogger();
             Stopwatch globalWatch = Stopwatch.StartNew(); // time the detection process
-            for (int i = 0; i < MyGlobal.imageClassList.Count; i++)
+            var totalImages = MyGlobal.imageClassList.Where(i => i.ImageName.IndexOf(".jpg") > 0).AsQueryable().ToArray();
+            for (int i = 0; i < totalImages.Count(); i++)
             {
-                if (MyGlobal.imageClassList[i].ImageName.IndexOf(".jpg") > 0)
+                if (totalImages[i].ImageName.IndexOf(".jpg") > 0)
                 {
                     TesseractSimple();
+                    logger.Trace("Image name: {0}\n\n\n", totalImages[i].ImageName);
                 }
                 NextImage();
             }
             globalWatch.Stop();
-            double percent = (double)MyGlobal.CorrectDetection.Count / (double)MyGlobal.imageClassList.Count * 100;
-            logger.Trace("License Plate Recognition time Tesseract Global: {0} milli-seconds \nFounded licence:{1}---Total licences{2}\nDetection percent: {4}%", globalWatch.Elapsed.TotalMilliseconds, MyGlobal.CorrectDetection.Count.ToString(), MyGlobal.imageClassList.Count.ToString(), percent.ToString());
+            double percent = (double)MyGlobal.CorrectDetection.Count / (double)totalImages.Count() * 100;
+            logger.Trace("License Plate Recognition time Tesseract Global: {0} milli-seconds ",globalWatch.Elapsed.TotalMilliseconds.ToString());
+            logger.Trace("License Plate Recognition time Tesseract Global:Founded licence: {0}\n", MyGlobal.CorrectDetection.Count.ToString());
+            logger.Trace("License Plate Recognition time Tesseract Global:Total licences {0}\n", totalImages.Count().ToString());
+            logger.Trace("License Plate Recognition time Tesseract Global:Detection percent: {0}%\n", percent.ToString());
         }
 
         private void GoogleApiGBtn_Click(object sender, EventArgs e)
         {
             var logger = NLog.LogManager.GetCurrentClassLogger();
             Stopwatch globalWatch = Stopwatch.StartNew(); // time the detection process
-            for (int i = 0; i < MyGlobal.imageClassList.Count; i++)
+            var totalImages = MyGlobal.imageClassList.Where(i => i.ImageName.IndexOf(".jpg") > 0).AsQueryable().ToArray();
+            for (int i = 0; i < totalImages.Count(); i++)
             {
-                if (MyGlobal.imageClassList[i].ImageName.IndexOf(".jpg") > 0)
+                if (totalImages[i].ImageName.IndexOf(".jpg") > 0)
                 {
                     GoogleApiSimple();
+                    logger.Trace("Image name: {0}", totalImages[i].ImageName);
                 }
                 NextImage();
             }
             globalWatch.Stop();
-            double percent = (double)MyGlobal.CorrectDetection.Count / (double)MyGlobal.imageClassList.Count * 100;
-            logger.Trace("License Plate Recognition time Google Api Global: {0} milli-seconds \nFounded licence:{1}---Total licences{2}\nDetection percent: {4}%", globalWatch.Elapsed.TotalMilliseconds, MyGlobal.CorrectDetection.Count.ToString(), MyGlobal.imageClassList.Count.ToString(), percent.ToString());
+            double percent = (double)MyGlobal.CorrectDetection.Count / (double)totalImages.Count() * 100;
+            logger.Trace("License Plate Recognition time Google Api Global: {0} milli-seconds ", globalWatch.Elapsed.TotalMilliseconds.ToString());
+            logger.Trace("License Plate Recognition time Google Api Global:Founded licence: {0}\n", MyGlobal.CorrectDetection.Count.ToString());
+            logger.Trace("License Plate Recognition time Google Api Global:Total licences {0}\n", totalImages.Count().ToString());
+            logger.Trace("License Plate Recognition time Google Api Global:Detection percent: {0}%\n", percent.ToString());
 
         }
 
@@ -738,17 +757,22 @@ namespace LicensePlateRecognition
         {
             var logger = NLog.LogManager.GetCurrentClassLogger();
             Stopwatch globalWatch = Stopwatch.StartNew(); // time the detection process
-            for (int i = 0; i < MyGlobal.imageClassList.Count; i++)
+            var totalImages = MyGlobal.imageClassList.Where(i => i.ImageName.IndexOf(".jpg") > 0).AsQueryable().ToArray();
+            for (int i = 0; i < totalImages.Count(); i++)
             {
-                if (MyGlobal.imageClassList[i].ImageName.IndexOf(".jpg") > 0)
+                if (totalImages[i].ImageName.IndexOf(".jpg") > 0)
                 {
                     CompVisionSimple();
+                    logger.Trace("Image name: {0}", totalImages[i].ImageName);
                 }
                 NextImage();
             }
             globalWatch.Stop();
-            double percent = (double)MyGlobal.CorrectDetection.Count / (double)MyGlobal.imageClassList.Count * 100;
-            logger.Trace("License Plate Recognition time Computer vision Api Global: {0} milli-seconds \nFounded licence:{1}---Total licences{2}\nDetection percent: {4}%", globalWatch.Elapsed.TotalMilliseconds, MyGlobal.CorrectDetection.Count.ToString(), MyGlobal.imageClassList.Count.ToString(), percent.ToString());
+            double percent = (double)MyGlobal.CorrectDetection.Count / (double)totalImages.Count() * 100;
+            logger.Trace("License Plate Recognition time Computer Vision Api Global: {0} milli-seconds ", globalWatch.Elapsed.TotalMilliseconds.ToString());
+            logger.Trace("License Plate Recognition time Computer Vision Api Global:Founded licence: {0}\n", MyGlobal.CorrectDetection.Count.ToString());
+            logger.Trace("License Plate Recognition time Computer Vision Api Global:Total licences {0}\n", totalImages.Count().ToString());
+            logger.Trace("License Plate Recognition time Computer Vision Api Global:Detection percent: {0}%\n", percent.ToString());
 
         }
     }
