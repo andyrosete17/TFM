@@ -167,7 +167,7 @@ namespace LicensePlateRecognition
 
                 SaveImageClass.SaveImage(gray, "gray.jpg");
                 SaveImageClass.SaveImage(canny, "canny.jpg");
-                for (int i = 0; i <= 4; i++)
+                for (int i = 0; i <= 5; i++)
                 {
                     switch (i)
                     {
@@ -193,7 +193,12 @@ namespace LicensePlateRecognition
                             }
                         case 4:
                             {
-                                FindLicensePlate(contours, hierachy, 0, gray, canny, licensePlateImagesList, filteredLicensePlateImagesList, detectedLicensePlateRegionList, licenses, ocr_mode, 140);
+                                FindLicensePlate(contours, hierachy, 0, gray, canny, licensePlateImagesList, filteredLicensePlateImagesList, detectedLicensePlateRegionList, licenses, ocr_mode, 150);
+                                break;
+                            }
+                        case 5:
+                            {
+                                FindLicensePlate(contours, hierachy, 0, gray, canny, licensePlateImagesList, filteredLicensePlateImagesList, detectedLicensePlateRegionList, licenses, ocr_mode, 170);
                                 break;
                             }
                         default:
@@ -398,7 +403,7 @@ namespace LicensePlateRecognition
 
             CvInvoke.Erode(thresh, thresh, null, new Point(-1, -1), 1, BorderType.Constant, CvInvoke.MorphologyDefaultBorderValue);
             SaveImageClass.SaveImage(thresh, "threshErode.jpg");
-            CvInvoke.Dilate(thresh, thresh, null, new Point(-1, -1), 2, BorderType.Constant, CvInvoke.MorphologyDefaultBorderValue);
+            CvInvoke.Dilate(thresh, thresh, null, new Point(-1, -1), 1, BorderType.Constant, CvInvoke.MorphologyDefaultBorderValue);
             SaveImageClass.SaveImage(thresh, "threshDilate.jpg");
 
             return thresh;

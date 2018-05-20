@@ -25,7 +25,7 @@ namespace LicensePlateRecognition.OCR_Method
                 var cognitiveService = new ImageToTextInterpreter
                 {
                     ImageFilePath = @"test.jpg",
-                    SubscriptionKey = "f8e66a9e669b45d2aea533a55b19ddb0",
+                    SubscriptionKey = "473349f3782e424f91d1b37e3403fa84",
                     ApiRoot = "https:///westcentralus.api.cognitive.microsoft.com/vision/v1.0/ocr"
                 };
                 try
